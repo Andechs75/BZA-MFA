@@ -1,0 +1,835 @@
+TRINIT	EQU	10E4H	;Programm Tracer Initialisieren
+TRACE	EQU	10F6H	;Programm Tracer
+INKLIB	EQU	127DH	;Programm Incermentalasembler Labelverwaltung
+DISA1	EQU	19F9H	;Programm Disasembler Instruktion ausgeben
+DISASM	EQU	19AEH	;Programm Disasembliere Speicherbereich
+LBINIT	EQU	18BBH	;Programm Initialisiere Label und Linktabelle
+
+
+;	1.	Monitor-Konstanten
+
+BPTANZ	EQU	4	;Anzahl der moeglichen Breakpoints
+LEER	EQU	0FFFFH	;"LEER" z.B. als Sprungadresse
+			;zwischen 300 und 600 Baud
+
+
+;	2.	Kontrollzeichen
+
+BEL	EQU	07H	;Klingel	(BELL)
+BS	EQU	08H	;Rueckschritt	(BACKSPACE)
+LF	EQU	0AH	;Zeilenvorschub	(LINE FEED)
+CR	EQU	0DH	;Wagentücklauf	(CARRIAGE RETURN)
+ESC	EQU	1BH	;Abbruch	(ESCAPE)
+RUBOUT	EQU	7FH	;Loeschen	(RUB OUT/DELETE)
+
+FBIN	EQU	1	;Binaer
+FHEX	EQU	3	;Hexadezimal
+
+	ORG	0000	;Monitor-Anfangsadresse
+BFZ:	JMP	RESET	;RST 0:		***** Monitor Start *****
+	DB	0FFH
+LBANF:	DW	LBRAM	;RST 0.5:	Anfang der Labeltabelle (Assembler)
+	DB	0FFH
+	DB	0FFH
+	JMP	CMDUSER	;RST 1: 	Anwender-Einsprung in Monitor
+	DB	0FFH
+	DB	0FFH	;RST 1.5:
+	DB	0FFH
+	DB	0FFH
+	DB	0FFH
+	JMP	RST2	;RST 2: 	Anwender-Restart
+	DB	0FFH
+	DB	0FFH	;RST 2.5:
+	DB	0FFH
+	DB	0FFH
+	DB	0FFH
+	JMP	RST3	;RST 3: 	Anwender-Restart
+	DB	0FFH
+	DB	0FFH	;RST 3.5:
+	DB	0FFH
+	DB	0FFH
+	DB	0FFH
+	JMP	BREAK	;RST 4: 	Breakpoint
+	DB	0FFH
+	JMP	TRAP	;RST 4.5:	Nicht maskierbarer Interrupt (Taster)
+	DB	0FFH
+	JMP	RST55	;RST 5.5: 	Anwender-Interrupt
+	DB	0FFH
+	JMP	RST55	;RST 6: 	Anwender-Restart
+	DB	0FFH
+	JMP	RST55	;RST 6.5: 	Anwender-Interrupt
+	DB	0FFH
+	JMP	ABORT	;RST 7:		Programm Abort
+	DB	0FFH
+	JMP	RST75	;RST 7.5: 	Anwender-Interrupt
+	DB	0FFH
+
+;	Jump-Tabelle (zu System-E/A-Unterprogrammen)
+
+	JMP	CMD
+	JMP	RCHAR	;1 Zeichen lesen
+
+	JMP	LEER	;Reserve
+	JMP	LEER	;Reserve
+	JMP	LEER	;Reserve
+	JMP	LEER	;Reserve
+
+	JMP	WCHAR	;1 Zeichen ausgeben
+	JMP	WCHARI	;1 Zeichen nach CALL ausgeben
+	JMP	WAHEX	;2 Hex-Stellen Ascii ausgeben (A)
+	JMP	WHLHEX	;4 Hex-Stellen Ascii ausgeben (HL)
+	JMP	WABIN	;8 Bin-Werte Ascii ausgeben (A)
+	JMP	WADEZ	;3 Dez-Stellen Ascii ausgeben (A)
+	JMP	WAFOR	;Ascii/Bin/Dez/Hex-Stellen Ascii ausgeben (A)
+	JMP	WBLANK	;Space ausgeben
+	JMP	WBUF	;Text ausgeben
+	JMP	WBUFI	;Text nach CALL ausgeben
+	JMP	WCRLF	;CRLF ausgeben
+	JMP	WCRLFI	;CRLF und Text nach CALL ausgeben
+	JMP	LEER	;Reserve
+	JMP	LEER	;Reserve
+	JMP	LEER	;Reserve
+
+;	Copyright Notice
+	DB	'(C) COPYRIGHT 1982 BFZ/MFA, ESSEN, W.GERMANY
+
+
+;	Kommando-Tabelle
+
+CMDTAB:	DB	'ASSEMBLER',0
+	DW	ASSEMBLER	;Inkremental-Assembler
+
+	DB	'BREAKPOINT',0
+	DW	BREAKPOINT	;Breakpoints Ein-/Ausschalten
+
+	DB	'DISASSEMBLER',0
+	DW	DISASSEMBLER	;Maschienencode Disassemblieren
+
+	DB	'GO',0
+	DW	GO		;Anwenderprogramm ausfueren
+
+	DB	'HELP',0
+	DW	HELP		;Hilfe: Alle Kommandos ausdrucken
+
+	DB	'IN',0
+	DW	INPORT		;Daten von Eingabeport Lesen
+
+	DB	'LOAD TAPE',0
+	DW	LOAD		;Daten von Bandkassette laden
+
+	DB	'MEMORY',0
+	DW	MEMORI		;Speicher drucken und aendern
+
+	DB	'NEXT INSTRUCTION',0
+	DW	NEXTINSTRUCTION	;Anwenderprogramm Schrittweise ausfuehren
+
+	DB	'OUT',0
+	DW	OUTPORT		;Daten zum Ausgabeportport ausgeben
+
+	DB	'PRINT',0
+	DW	PRINT		;Speicherbereich ausgeben
+
+	DB	'REGISTER',0
+	DW	REGISTER	;Register drucken und aendern
+
+	DB	'SAVE',0
+	DW	SAVE		;Daten auf Bandkassette speichern
+
+	DB	'TRACE INTERVAL',0
+	DW	TRACEINTERVAL	;Intervall-Trace Ein-/Ausschalten
+
+	DB	0		;Ende Kommando-Tabelle
+
+
+;	System Boot
+
+RESET:	LXI	SP,MONSTK	;Stack initialisieren
+	CALL	BPTREM
+	CALL	CASINIT		;Cassetten I/O initialisieren
+	MVI	A,0C3H
+	STA	SERIN		;Addressen der Seriellen Routinen vorbesetzen
+	STA	SEROUT		;mit den normalen Routinen
+	LXI	H,SERI
+	SHLD	SERIN+1
+	LXI	H,SERO
+	SHLD	SEROUT+1
+				;Power-up oder Warmstart ?
+	LXI	H,RESBUF
+	MVI	A,5AH
+	CMP	M
+	JZ	TESTERRESET	;Warmstart, RAM ist schon initialisiert
+	MOV	M,A		;Power-up, bzw. Kaltstart
+	LXI	H,BRAM		;RAM initialisieren (=0 setzen)
+	MVI	C,ERAM-BRAM
+RESET2:	MVI	M,0
+	INX	H
+	DCR	C
+	JNZ	RESET2
+	LXI	H,USRSTK	;Anwender-Stack initialisieren
+	SHLD	SPWERT
+	MVI	A,'H'
+	STA	FORMAT		;FORMAT = Hex
+	CALL	SERINIT		;Seriellen I/O initialisieren
+	CALL	LBINIT		;Labeltabelle loeschen
+	CALL	WCRLFI		;Power-up Nachricht ausgeben
+	DB	'BFZ-MONITOR VERSION 1.8',LF,0
+	CALL	HELP
+
+
+;	Kommando-Dekodierer
+
+CMD:	LXI	SP,MONSTK	;Stack initialisieren
+	CALL	TRINIT		;Trace initialisieren
+	CALL	LCLR		;Zeilenzaehler ausschalten
+	XRA	A		;Akku=0
+	STA	BCKFLG		;"+/-" abschalten
+	STA	RUBFLG		;RUBOUT einschalten
+	STA	GROFLG		;nur Grossbuchstaben
+	CALL	BCLR		;Eingabepuffer loeschen
+	CALL	WCRLFI		;Leerzeile ausgeben
+	DB	LF,0
+CMD1:	CALL	WBUFI		;Prompt
+	DB	CR,'       '	;7 Leerzeichen gefolgt von
+	DB	CR,'KMD > ',0	;Kommando Prompt ausgeben
+	MVI	B,1		;Anzahl der Zeichen in
+	MVI	C,0		; Ascii-Format
+	CALL	BREAD		;Zeichen einlesen und Puffern
+	CALL	BGETF		;Zeichen holen, welche da?
+	JC	CMDEX2		; -nein
+	LXI	H,CMDTAB	; -ja, Kommando ausfuehren
+	MOV	C,A
+CMDEX1:	MOV	A,M
+	ORA	A
+	JNZ	CMDEX3
+CMDEX2:	LXI	H,2000H		;Bei nicht vorgesehenem Kommando
+	MVI	A,0C3H		; wird bei ADR 2000h geprueft,
+	CMP	M		; ob dort ein JMP-Befehl (C3) steht;
+	CZ	CALLHL		; wenn ja, Sprung dorthin
+	CALL	WBELL		;Falsches Kommando
+	CALL	CRTTST		;TTY ?
+	JNC	CMD1		; nein, Prompt in gleicher Zeile
+	JMP	CMD		; ja, Promt in nächster Zeile
+CMDEX3:	INX	H
+	CMP	C		;Zeichen erkannt?
+	JZ	CMDEX5		; ja, erkannt
+CMDEX4:	MOV	A,M		; nein, Resttext uebergehen
+	INX	H
+	ORA	A		;Ende Resttext?
+	JNZ	CMDEX4		; nein
+	INX	H		; ja, ADR uebergehen
+	INX	H
+	JMP	CMDEX1
+CMDEX5:	CALL	WBUF		;Resttext ausgeben
+	MOV	E,M		;Kommandoaddresse -->(DE)
+	INX	H
+	MOV	D,M
+	XCHG
+	CALL	CALLHL		;Kommando ausführen
+	CC	WBELL
+	JMP	CMD
+
+;************************************************************
+;* CMDABORT	Grund des Programmabbruchs ausdrucken
+;*	CALL	CMDABORT
+;*	DB	'GRUND DES ABBRUCHS',0
+;************************************************************
+CMDABORT:
+	CALL	BPTREM
+	CALL	WCRLFI
+	DB	' *** ',0
+	XTHL
+	CALL	WBUF
+	XTHL
+	CALL	WBUFI
+	DB	' ***',0
+	RET
+	
+;************************************************************
+;* CMDUSER	Anwenderprogramm kehrt mit RST1 
+;*		oder Call 0008H zurueck
+;************************************************************
+CMDUSER:			;*** RST1 ***
+	CALL	REGSAV
+	CALL	CMDABORT
+	CB	'USER',0
+	JMP	CMD
+
+;************************************************************
+;* CMDUSER	Programm-Absturz durch FF als OP-Code
+;************************************************************
+ABORT:				;*** RST7 ***
+	CALL	REGSAV
+	CALL	CMDABORT
+	CB	'PROGRAMM ABORT',0
+	JMP	CMD
+
+;************************************************************
+;* TASTERRESET	Reset-Taster betaetigt
+;************************************************************
+TASTERRESET:			;*** TASTE RESET ***
+	LXI	SP,MONSTK
+	CALL	BCLR
+	CALL	CMDABORT
+	CB	'RESET',0
+	LHLD	STIME		;Bestimme ob TTY oder CRT Baudrate
+	MVI	A,LOW B300
+	SUB	L
+	MVI	A,HIGH B300
+	SBB	H		; kleiner gleich 300 Baud bedeutet TTY
+	MVI	A,0
+	ADC	A		; =1 TTY, =0 CRT
+	STA	CRTFLG
+	JMP	CMD
+
+;************************************************************
+;* TRAP		Nicht Maskierbarer Interrupt (TRAP)
+;************************************************************
+ABORT:				;*** TRAP ***
+	CALL	REGSAV
+	CALL	SERINIT
+	CALL	CMDABORT
+	CB	'MONITOR RESTART',0
+	JMP	CMD
+
+;************************************************************
+;* ASSEMBLER	Inkrementalassambler
+;* KMD > 'A'SSEMBLER		A-CR oder A-Space Tippen,
+;*				Resttext wird ergaenzt
+;* 'START-ADR =XXXX' YYYY	XXXX=Alt, Neu: YYYY-CR oder YYYY-Space
+;*					  Alt: CR oder Space	
+;* Programm eintippen
+;*	END CR
+;*	'KMD > '		naechstes Kommando
+;************************************************************
+ASSEMBLER:
+	LHLD	ABADR
+	CALL	HSTARD		;StartAdr. holen
+	SHLD	ABADR
+	CALL	INKLB		;(HL)=Anf.Adresse
+	XCHG			;(HL)=LWA+1
+	CALL	WCRLFI
+	DB	' *** ',0
+	CALL	HJANEIN
+	DB	'RESTART ?',0
+	STC
+	CMC
+	RNZ			;nicht 'JA'
+	MVI	M,0CFH		;'JA':	RST1 danach
+	RET
+
+;************************************************************
+;* BREAKPOINT	Breakpoints ausdrucken und Ein-/Ausschalten
+;* KMD > 'B'REAKPOINT		B-CR oder B-Space Tippen,
+;*				Resttext wird ergaenzt
+;* 'BREAK-ADR1 =X1X1' Y1Y1	X1X1=Breakpointadresse 1
+;* 'BREAK-ADR2 =X2X2' Y2Y2	X2X2=Breakpointadresse 2
+;* 'EIN/AUS    =X' Y		X=Alt, Ein: Y=E-CR oder E-Space
+;*				       Aus: Y=A-CR oder A-Space
+;*				       Y=CR oder Space unveraendert	
+;************************************************************
+BREAKPOINT:
+	MVI	B,0		;Alle Breakpointadr ausdrucken
+	CALL	BPTNUM		;(C) <-- Anzahl Breakpoints
+BREAK1:	CALL	HBPTD1
+	INR	B
+	DCR	C
+	JNZ	BREAK1
+	LXI	H,BPTFLG	;Breakpoints Ein-/Ausschalten
+	CALL	HEINAUS		;E=Ein, A=Aus
+	RET
+
+;************************************************************
+;* BREAK	Breakpoint Ausführungsroutine
+;* 	Die Routine wird ausgefuehrt, wenn
+;*(1)	Breakpoints eingeschaltet sind	AND
+;*	Breakpoints nicht alle=0 sind	AND
+;*	Das Programm eine Adresse erreicht, auf die ein
+;*	 Breakpoint gesetzt ist:
+;*	*** BREAKPOINT ERROR ***
+;*	 REGISTERAUSDRUCK
+;*(2)	Ein RST4 im Druchlaufenden Programmcode steht:
+;*	*** BREAKPOINT ERROR ***
+;*	 REGISTERAUSDRUCK
+;*	Die Instruktion, bei der sich ein Breakpoint ereignet hat,
+;*	 ist noch nicht ausgefuehrt, d.h., dass der Registerausdruck
+;*	 das Resultat der vorangegangenen Instruktion anzeigt.
+;************************************************************
+BREAK:
+	CALL	REGSAV		;Register retten; (HL)=PC
+	CALL 	LCLR		;Zeilenzähler ausschalten
+	DCX	H
+	SHLD	PCWERT
+	LDA	BPTFLG
+	ORA	A		;Breakpoints Eingeschaltet?
+	JZ	B0		; nein, RST4 im Code
+	STA	BPTACT		; ja
+	MVI	B,0FFH
+	CALL	BPTSET		;(PC)-1=BREAK-Adr ?
+	JNC	B0		; nein, Breakpointfehler
+	CALL	WCRLFI		; ja
+	DB	LF
+	DB	' *** BREAKPOINT ***',0
+	JMP	B1
+B0:	LHLD	PCWERT		;Breakpointfehler:
+	INX	H		; (PC)-1 ungleich BREAK-Adr
+	SHLD	PCWERT		; oder Breakpoints nicht eingeschaltet
+	CALL	WCRLFI
+	DB	LF
+	DB	' *** BREAKPOINT ERROR ***',0
+B1:	CALL	BPTREM		;Breakpoints entfernen
+	CALL	PREGT		;Registerinhalte ausdrucken
+	CALL	PREGP
+	CALL	PREGs
+	CALL	CMD		;ACHTUNG! Kommt nie zurueck
+
+
+;************************************************************
+;* DISASSEMBLER	Disassembler Maschinencode
+;* KMD > 'D'ISASSEMBLER		D-CR oder D-Space Tippen,
+;*				Resttext wird ergaenzt
+;* 'START-ADR =X1X1' Y1Y1	X1X1=Alt, Neu: Y1Y1-CR oder Y1Y1-Space
+;*					  Alt: CR oder Space
+;* 'STOP -ADR =X2X2' Y2Y2	X2X2=Alt, Neu: Y2Y2-CR oder Y2Y2-Space
+;*					  Alt: CR oder Space
+;************************************************************
+DISASSEMBLER:
+	LHLD	DBADR
+	CALL	HSTARD		;Start-Adr holen
+	SHLD	DBADR
+	XCHG
+	LHLD	DEADR
+	CALL	HSTOPD		;Stop-Adr holen
+	SHLD	DEADR
+	XCHG
+	CALL	LINIT		;Zeilenzaehler einschalten
+	CALL	DISASM		;Disassemblieren: (HL)=Start, (DE)=Stop
+	CALL	WCRLF
+	CALL	WBLNKI
+	DB	21
+	CALL	WBUFI
+	DB	'END',0
+	ORA	A
+	RET
+
+;************************************************************
+;* GO	Programm ausfuehren, zuvor ggf. Breakpoints einsetzen
+;* KMD > 'G'O			G-CR oder G-Space Tippen,
+;*				Resttext wird ergaenzt
+;* 'START-ADR =XXXX' YYYY	XXXX=Alt, Neu: YYYY-CR oder YYYY-Space
+;*					  Alt: CR oder Space
+;* 'BREAK-ADR1=X1X1' Y1Y1	X1X1=Alt, Neu: Y1Y1-CR oder Y1Y1-Space
+;*					  Alt: CR oder Space
+;* 'BREAK-ADR2=X2X2' Y2Y2	X2X2=Alt, Neu: Y2Y2-CR oder Y2Y2-Space
+;*					  Alt: CR oder Space
+;* O D E R
+;* KMD > 'G'O			
+;* 'START-ADR =XXXX' YYYY
+;* 'BREAK-ADR1=X1X1' Y1Y1	X1X1=Alt, Neu: Y1Y1-CR
+;*					  Alt: CR
+;* O D E R, wenn Breakpoints aus
+;* KMD > 'G'O			
+;* 'START-ADR =XXXX' YYYY
+;************************************************************
+GO:
+	LHLD	PCWERT
+	CALL	HSTARD		;Start-Adr holen
+	SHLD	PCWERT
+	LDA	BPTFLG
+	ORA	A		;Breakpoints Eingeschaltet?
+	JZ	GO2		; nein
+	CALL	BPTNUM		; ja, Break-Adr anfordern
+	MVI	B,0
+GO1:	CALL	HBPTD		;Break-Adr holen
+	JNZ	GO2		; NZ: keine weiteren Break-Adr
+	INR	B
+	DCR	C
+	JNZ	GO1
+GO2:	CALL	WCRLF
+	LDA	TRCFLG
+	ORA	A		;Trace eingeschaltet?
+	JNZ	GO3		; ja
+	STA	BPTACT		; nein
+	CALL	TRACE		;Eine Instruktion tracen,
+	CC	TRHALT
+	CALL	BPTINS		; dann Breakpoints einfuegen,
+	CALL	REGRES		; Register wiederherstellen
+	RET			; und Kontrolle an Anwenderprogramm
+GO3:	CALL	LINIT		;TRACE: Zeilenzaehler einschalten
+	CALL	TRINT		;TRACE Modus
+	RET
+
+;************************************************************
+;* HELP	Alle Kommandos ausdrucken
+;* KMD > 'H'ELP			H-CR oder H-Space Tippen,
+;*				Resttext wird ergaenzt
+;************************************************************
+HELP:
+	LXI	H,CMDTTAB	;(HL)= Anf.Adr der Kommandotabelle
+HELP1:	MOV	A,M
+	ORA	A		;Tabellenende ?
+	RZ			; ja, exit
+	CALL	WCRLFI		; nein, Text in neuer Zeile ausgeben
+	DB	' ',0
+HELP2:	MOV	A,M
+	INX	H
+	ORA	A		;Text ende? 'xxx',0
+	JZ	HELP3		; ja
+	CALL	WCHAR		; nein, Zeichen ausgeben
+	JMP	HELP2
+HELP3:	INX	H		;(HL)= StartAdr Kommando		
+	INX	H
+	JMP	HELP1		;(HL)= Anf.Adr des nächsten Eintrags
+
+;************************************************************
+;* INPORT	Eingabeport lesen
+;* KMD > 'I'N		I-CR oder I-Space Tippen,
+;*			Resttext wird ergaenzt
+;* 'PORT-NR =X1' Y1	X1=Alt, Alt-1: -
+;*				Alt+1: +
+;*				Neu: Y1-CR oder Y1-Space
+;*				Alt: CR oder Space
+;* 'DATEN   =X2' Y2	X2=Gelesener Wert, Y2=CR    Fertig
+;*					   Y2=Space wiederholen
+;*					   Y2=+/-   neue PortAdr
+;************************************************************
+INPORT:
+	MVI	A,1
+	STA	BCKFLG		;+/1 zusätzlich als Abschluss
+I1:	CALL	HPORTD		;Hole PortAdr
+I2:	PUSH	B
+	MVI	C,0DBH		;IN-Befehl
+	CALL	EXPORT		; ausführen (s. ROUT. Export)
+	CALL	PDATA
+	MVI	B,0		; 0 Zeichen (nur Schlusszeichen von Interesse)
+	MVI	C,FHEX		;Hex Format
+	CALL	BREAD
+	POP	B
+	CPI	' '		;Schlusszeichen ist Space?
+	JZ	I2		; ja, wiederholen
+	JNC	I1		; nein, + oder -: neue PortAdr holen
+	ORA	A		;CR: Exit mit CY=0
+	RET
+
+;************************************************************
+;* LOAD Programm oder Daten von Cassette laden
+;* KMD > 'L'OAD			L-CR oder L-Space Tippen,
+;*				Resttext wird ergaenzt
+;* 'START-ADR =' YYYY		Neu: YYYY-CR oder YYYY-Space mit
+;*				     YYYY nicht 0
+;*				YYYY=0: StartAdr von Cassette
+;* 'SPACE, DANN BAND EINSCHALTEN'	Los geht's, wenn Space getippt
+;* 'ZZZZZ'			ZZZZZ=READY: Fehlerfrei eingelesen
+;* 'ZZZZZ'			ZZZZZ=ERROR: Fehler beim Einlesen
+;*					     Checksum oder Time-out
+;************************************************************
+LOAD:
+	LXI	H,0
+	CALL	HSTART		;LadeAdr holen
+	CALL	WCRLFI
+	DB	' SPACE, DANN BAND EINSCHALTEN',0
+LSPACE:	CALL	RCHAR		;Auf Space warten
+	CPI	' '
+	JNZ	LSPACE
+	CALL	WCRLF
+	MOV	A,H
+	ORA	L		;LadeAdr=0 ?
+	PUSH	PSW		; (Flags retten)
+	JZ	L1		; ja, LadeAdr von Cassette lesen
+	SHLD	LBADR		; nein, LadeAdr abspeichern
+L1:	CALL	RCAS		;RECORD Mark suchen
+	JC	L5		; Time-out
+	CPI	':'		;RECORD Mark ?
+	JNZ	L1		; nein, weiter suchen
+	MVI	B,0		; ja, CHECKSUM=0 Anfangs
+	CALL	RCASAHEX	;Anzahl Bytes lesen
+	JZ	L3		;Launge=0: ENDE-RECORD
+	MOV	C,A		;Anzahl Datenbytes
+	CALL	RCASAHEX	;LadeAdr Lesen (2 Bytes)
+	MOV	D,A
+	CALL	RCASAHEX
+	MOV	E,A		;(DE)=LadeAdr
+	POP	PSW		;LadeAdr von Cassette verwenden ?
+	PUSH	PSW
+	JNZ	L11		; nein
+	XCHG
+L11:	CALL	RCASAHEX	;RECORD Typ einlesen
+	ORA	A
+	JNZ	L5		;NZ: Typ ungleich 0
+L2:	CALL	RCASAHEX	;Datenbytes einlesen
+	MOV	M,A		; und ab LadeAdr abspeichern
+	INX	H		; solange, bis
+	DCR	C		; alle im RECORD erfasst
+	JNZ	L2
+	CALL	RCASAHEX	;CHECKSUM einlesen
+	JNC	L1		;NZ: CHECKSUM iO, naechster RECORD
+	JMP	L5		; CHECKSUM niO
+L3:	MVI	C,4		;ENDE RECORD ohne weitere
+L4:	CALL	RCASAHEX	; Kontrolle einlesen (bis auf CHECKSUM!)
+	DCR	C
+	JNZ	L4
+	JNC	L6		; NC: CHECKSUM iO
+L5:	CALL	WCRLFI		; Fehlernachricht
+	DB	' CHECKSUM ERROR',0
+	POP	PSW
+	STC
+	RET
+L6:	CALL	WCRLFI		;Alles korrekt eingelesen
+	DB	' READY',0
+	POP	PSW
+	ORA	A
+	RET
+
+;************************************************************
+;* MEMORI	Speicherinhalte anzeigen und aendern
+;* KMD > 'M'EMORY		M-CR oder M-Space Tippen,
+;*				Resttext wird ergaenzt
+;* 'START-ADR =XXXX' YYYY	XXXX=Alt, Neu: YYYY-CR oder YYYY-Space
+;*					  Alt: CR oder Space
+;* 'FORMAT    =X' Y		X=Alt, Neu: Y-CR oder Y-Space
+;*				       Alt: CR oder Space
+;*				Y=A:	Ascii
+;*				 =B:	Binaer
+;*				 =D:	Dezimal
+;*				 =H:	Hexadezimal
+;************************************************************
+MEMORI:
+	LHLD	MBARD
+	CALL	HSTARD		;Start-Adr holen
+	CALL	HFORMAT		;Datenformat holen
+	MVI	A,1
+	STA	BCKFLG		;Adr Vorwaerts/Rueckwaerts durch +/-
+	STA	GROFLG		;Kleinschreibung bei Ascii-Format zulassen
+M0:	SHLD	MBADR
+	CALL	WCRLFI
+	DB	' ',0
+	CALL	WHLWXB
+	MOV	A,M		;Speicherwert entsprechend
+	CALL	WAFORB		; Datenformat ausdrucken
+	PUSH	H
+	MOV	E,C
+	LXI	H,1832H		;Anzahl Ziffern: 1=A 6=B, 3=D, 2=H
+M1:	DAD	H
+	RAL
+	DAD	H
+	RAL
+	DAD	H
+	RAL
+	DAD	H
+	RAL
+	DCR	E
+	JP	M1
+	ANI	0FH
+	MOV	B,A		;(B)=Anzahl der Ziffern entsprechend Format
+	POP	H
+	CALL	BREAD		;Ziffern einlesen
+	PUSH	PSW
+	CALL	BGETL
+	JC	M4		; C: Nur Schlusszeichen, Speicherinhalt bleibt
+	LXI	D,0		; Speicherinhalt aendern
+	CALL	ZUFOR		;Ziffern entspr. Format wandeln
+M2:	CALL	BGETL		; enspechend Format umwandeln
+	JC	M3		; und abspeichern
+	CALL	ZUFOR
+	JMP	M2
+M3:	MOV	M,D
+M4:	POP	PSW
+	CPI	CR		;Schlusszeichen = CR ?
+	JZ	M5		; ja, Fertig
+	CPI	'+'+1		; nein, Zeichen=- ?
+	INX	H
+	JM	M0		; nein, Adr +=1
+	DCX	H		; ja,	Adr -=1
+	DCX	H
+	CALL	WCHAR		;'-' markiert Adr rueckwärts
+	JMP	M0
+M5:	ORA	A
+	RET
+
+;************************************************************
+;* NEXTINSTRUCTION	Anzahl von Instruktionen ausfuehren
+;* KMD > 'N'EXT INSTRUCTIONS	N-CR oder N-Space Tippen,
+;*				Resttext wird ergaenzt
+;* 'START-ADR =XXXX' YYYY	XXXX=Alt, Neu: YYYY-CR oder YYYY-Space
+;*					  Alt: CR oder Space
+;* 'STEPS     =XX' YY		XX=Alt, Neu: YY-CR oder YY-Space
+;*					Alt: CR oder Space
+;*		Danach werden die XX bzw. YY nachfolgenden Instruktionen
+;*		ausgefuehrt. Nach jeder Instruktion werden alle Register
+;*		ausgedruckt.
+;************************************************************
+NEXTINSTRUCTION:
+	LHLD	PCWERT
+	CALL	HSTARD		;Start-Adr holen
+	SHLD	PCWERT
+	CALL	HSTEPD		;Anzahl der Schritte holen
+	CALL	LINIT		;Zeilenzaehler einschalten
+	CALL	TRSTEP		;Angegebene Zahl von Instruktionen ausführen
+	ORA	A
+	RET
+
+;************************************************************
+;* OUTPORT	Daten ueber I/O-Port ausgeben
+;* KMD > 'O'UT		O-CR oder O-Space Tippen,
+;*			Resttext wird ergaenzt
+;* 'PORT-NR =X1' Y1	X1=Alt, Alt-1: -
+;*				Alt+1: +
+;*				Neu: Y1-CR oder Y1-Space
+;*				Alt: CR oder Space
+;* 'DATEN   =X2' Y2	X2=Gelesener Wert, Y2=CR    Fertig
+;*					   Y2=Space wiederholen
+;*					   Y2=+/-   neue PortAdr
+;************************************************************
+OUTPORT:
+	MVI	A,1
+	STA	BCKFLG		;Adr Vorwaerts/Rueckwaerts durch +/-
+O1:	CALL	HPORTD		;Port-Adr holen
+O2:	CALL	HDATAD		;Daten holen
+	PUSH	PSW		;Endezeichen retten
+	MOV	A,D
+	MVI	C,0D3H		;OUT-Befehlt
+	CALL	EXPORT
+	POP	PSW
+	CPI 	' '		;Space ?
+	JZ	O2		; ja, neue Daten
+	JNC	O1		; nein, + oder -, neue Port-Adr
+	ORA	A		; nein, CR, Fertig
+	RET
+
+EXPORT:				;PORT-Befehl ausführen
+	PUSH	H		;PORT-Befehl (IN/OUT Adr)auf Stack
+	LXI	H,00C9H
+	PUSH	H		;RET-Befehl auf Stack
+	PUSH	B		
+	MOV	L,H		;(L)=0
+	DAD	SP
+	CALL	CALLHL		;IN/OUT-Befehl wird auf Stack ausgefuehrt !
+	POP	H
+	POP	H
+	POP	H
+	RET
+
+;************************************************************
+;* PRINT	Speicherbereich ausdrucken
+;* KMD > 'P'RINT		P-CR oder P-Space Tippen,
+;*				Resttext wird ergaenzt
+;* 'START-ADR =X1X1' Y1Y1	X1X1=Alt, Neu: Y1Y1-CR oder Y1Y1-Space
+;*					  Alt: CR oder Space
+;* 'STOP -ADR =X2X2' Y2Y2	X2X2=Alt, Neu: Y2Y2-CR oder Y2Y2-Space
+;*					  Alt: CR oder Space
+;* 'FORMAT    =X' Y		X=Alt, Neu: Y-CR oder Y-Space
+;*				       Alt: CR oder Space
+;*				Y=A:	Ascii
+;*				 =B:	Binaer
+;*				 =D:	Dezimal
+;*				 =H:	Hexadezimal
+;************************************************************
+PRINT:
+	LHLD	PDADR		;Alte Adresse
+	CALL	HSTARD		;StartAdr holen
+	SHLD	PBADR		;Neue Adr. oder unveraendert
+	XCHG
+	LHLD	PEADR
+	CALL	HSTOPD		;StopAdr holen
+	SHLD	PEADR
+	CALL	SUB2		;(HL)= Anzahl der Auszudruckenden
+	RC			;	Speicherinhalte
+	XCHG
+	INX	D
+	CALL	HFORMD		;Zahlenformat holen
+	CALL	LINIT
+	MVI	B,00000111B	;Maske für neue Zeile
+	MOV	A,C		; 8 Werte pro Zeile bei Ascii, Dez, Hex
+	DCR	A		;Binaer?
+	JNZ	P1		; nein
+	MVI	B,00000000B	; ja, ein Wert pro Zeile
+P1:	CALL	WCRLF
+	CALL	WHLHXB		;Speicheradr ausdrucken
+P2:	MOV	A,M		;Speicherwert holen
+	CALL	WAFORB		;Wert wandeln und ausgeben
+	DCX	D
+	MOV	A,D
+	ORA	E		;Alles ausgedruckt ?
+	RZ			; ja
+	INX	H		; nein, naechster Wert
+	MOV	A,L
+	ANA	B		;Neue  Zeile?
+	JNZ	P2		; nein
+	JMP	P1		; ja
+	RET
+
+;************************************************************
+;* REGISTER	Registerinhalte drucken und aendern
+;* KMD > 'R'RINT		R-CR oder R-Space Tippen,
+;*				Resttext wird ergaenzt
+;*  PC   LABEL:  OP	  ADR.FELD  A  NZHPC  B  C  D  E  H  L  I  SP
+;*  1022 L1:     LXI  H,WERT    12 10110  22 FF 23 AA 12 34 00 F00
+;*
+;*	Aenderungen der Register werden so vorgenommen:
+;*	(1) Space beendet Aenderung eines Registers
+;*	(2) CR    beendet alle Eingaben
+;*	(3) Eingegebene Hex. Ziffern aendern nur die Stelle, an der
+;*	    die Ziffer eingegeben wurde.
+;************************************************************
+REGISTER:
+	MVI	A,1
+	STA	RUBFLG		;RUBOUT fuer TTY ausschalten
+	CALL	PREGT		;Titel drucken
+	LXI	H,REGTAB	;Register-Tabelle
+	PUSH	H
+	CALL	PREGS0		;Alle Register Ausdrucken
+	POP	H
+REG1:	MOV	A,M		;(A)= Register Typ (s.REGTAB)
+	INX	H
+	ORA	A		;Register Typ = 0 ?
+	RZ			; ja, fertig
+	PUSH	H		; nein
+	LXI	H,REGW		;(HL)=Adr der aktuellen Registerliste
+	MOV	E,A		;Tabellenindex errechnen fuer
+	ANI	0FH		; die Faelle:
+	MOV	C,A		; (1) 8Bit Register (A,B,C,...)
+	MVI	B,0		; (2) Flag Register 5Bit Binaer
+	DAD	B		; (3) 16Bit Register
+	MOV	A,E		; (4) 16Bit Register am Zeilenanfang
+	XCHG
+	RLC
+	RLC
+	ANI	3
+	LXI	H,RTAB		;Entsprechend Reg.Typ ueber Tabelle springen
+	MOV	C,A
+	CALL	CALLTB
+	POP	H
+	CPI	CR		;Schlusszeichen ?
+	RZ			; ja, fertig
+	CALL	WBLANK		; nein
+	JMP	REG1
+RTAB:	DW	R2HEX		; 8Bit Hex
+	DW	R5CC		; 5Bit Bin
+	DW	R4HEX		;16Bit Hex
+	DW	R4HEXPC		;16Bit Hex PC
+
+R2HEX:				;2 Hex.Bytes einlesen
+	MVI	B,2		;2 Bytes
+	MVI	C,FHEX		;Hex.Format
+	CALL	R4HEX0		;Neuen Wert einlesen
+	PUSH	PSW
+	LDAX	B		;Nur die eingegebenen Stellen
+	ANA	E		; aendern, und zwar linksbuendig
+	ORA	L
+	STAX	B
+	POP	PSW
+	RET
+
+R5CC:				;5 Bin.Bytes einlesen
+	MVI	B,5		;5 Bytes
+	MVI	C,FBIN		;Bin.Format
+	CALL	BREAD
+	PUSH	PSW
+	CALL	BGETL		;Ziffer eingegeben?
+	CMC
+	JNC	R5CC4		; nein, fertig
+	ANI	1		; ja
+	MOV	L,A		;(L)= Ziffernwert (0 oder 1)
+	MVI	B,10101011B	;FLAG-Reg. Maske
+	MVI	C,4		;noch max. 4 eingegebene Bytes
+R5CC1:	CALL	BGETL		;Ziffer aus Puffer holen, war noch was da ?
+	JNC	R5CC2		; ja,
