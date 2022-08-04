@@ -1,101 +1,106 @@
-TRINIT	EQU	10E4H	;Programm Tracer Initialisieren
-TRACE	EQU	10F6H	;Programm Tracer
-INKLIB	EQU	127DH	;Programm Incermentalasembler Labelverwaltung
-DISA1	EQU	19F9H	;Programm Disasembler Instruktion ausgeben
-DISASM	EQU	19AEH	;Programm Disasembliere Speicherbereich
-LBINIT	EQU	18BBH	;Programm Initialisiere Label und Linktabelle
+TRINIT	EQU	10E4H		;Programm Tracer Initialisieren
+TRACE	EQU	10F6H		;Programm Tracer
+INKLIB	EQU	127DH		;Programm Incermentalasembler Labelverwaltung
+DISA1	EQU	19F9H		;Programm Disasembler Instruktion ausgeben
+DISASM	EQU	19AEH		;Programm Disasembliere Speicherbereich
+LBINIT	EQU	18BBH		;Programm Initialisiere Label und Linktabelle
 
-
+;************************************************************
 ;	1.	Monitor-Konstanten
+;************************************************************
+BPTANZ	EQU	4		;Anzahl der moeglichen Breakpoints
+LEER	EQU	0FFFFH		;"LEER" z.B. als Sprungadresse
+				;zwischen 300 und 600 Baud
 
-BPTANZ	EQU	4	;Anzahl der moeglichen Breakpoints
-LEER	EQU	0FFFFH	;"LEER" z.B. als Sprungadresse
-			;zwischen 300 und 600 Baud
-
-
+;************************************************************
 ;	2.	Kontrollzeichen
+;************************************************************
+BEL	EQU	07H		;Klingel	(BELL)
+BS	EQU	08H		;Rueckschritt	(BACKSPACE)
+LF	EQU	0AH		;Zeilenvorschub	(LINE FEED)
+CR	EQU	0DH		;Wagentücklauf	(CARRIAGE RETURN)
+ESC	EQU	1BH		;Abbruch	(ESCAPE)
+SPACE	EQU	20H		;Leerzeichen	(SPACE)
+RUBOUT	EQU	7FH		;Loeschen	(RUB OUT/DELETE)
 
-BEL	EQU	07H	;Klingel	(BELL)
-BS	EQU	08H	;Rueckschritt	(BACKSPACE)
-LF	EQU	0AH	;Zeilenvorschub	(LINE FEED)
-CR	EQU	0DH	;Wagentücklauf	(CARRIAGE RETURN)
-ESC	EQU	1BH	;Abbruch	(ESCAPE)
-RUBOUT	EQU	7FH	;Loeschen	(RUB OUT/DELETE)
+FBIN	EQU	1		;Binaer
+FHEX	EQU	3		;Hexadezimal
 
-FBIN	EQU	1	;Binaer
-FHEX	EQU	3	;Hexadezimal
-
-	ORG	0000	;Monitor-Anfangsadresse
-BFZ:	JMP	RESET	;RST 0:		***** Monitor Start *****
+;************************************************************
+;* Monitor
+;************************************************************
+	ORG	0000		;Monitor-Anfangsadresse
+BFZ:	JMP	RESET		;RST 0:		***** Monitor Start *****
 	DB	0FFH
-LBANF:	DW	LBRAM	;RST 0.5:	Anfang der Labeltabelle (Assembler)
-	DB	0FFH
-	DB	0FFH
-	JMP	CMDUSER	;RST 1: 	Anwender-Einsprung in Monitor
-	DB	0FFH
-	DB	0FFH	;RST 1.5:
+LBANF:	DW	LBRAM		;RST 0.5:	Anfang der Labeltabelle (Assembler)
 	DB	0FFH
 	DB	0FFH
+	JMP	CMDUSER		;RST 1: 	Anwender-Einsprung in Monitor
 	DB	0FFH
-	JMP	RST2	;RST 2: 	Anwender-Restart
-	DB	0FFH
-	DB	0FFH	;RST 2.5:
+	DB	0FFH		;RST 1.5:
 	DB	0FFH
 	DB	0FFH
 	DB	0FFH
-	JMP	RST3	;RST 3: 	Anwender-Restart
+	JMP	RST2		;RST 2: 	Anwender-Restart
 	DB	0FFH
-	DB	0FFH	;RST 3.5:
+	DB	0FFH		;RST 2.5:
 	DB	0FFH
 	DB	0FFH
 	DB	0FFH
-	JMP	BREAK	;RST 4: 	Breakpoint
+	JMP	RST3		;RST 3: 	Anwender-Restart
 	DB	0FFH
-	JMP	TRAP	;RST 4.5:	Nicht maskierbarer Interrupt (Taster)
+	DB	0FFH		;RST 3.5:
 	DB	0FFH
-	JMP	RST55	;RST 5.5: 	Anwender-Interrupt
 	DB	0FFH
-	JMP	RST55	;RST 6: 	Anwender-Restart
 	DB	0FFH
-	JMP	RST55	;RST 6.5: 	Anwender-Interrupt
+	JMP	BREAK		;RST 4: 	Breakpoint
 	DB	0FFH
-	JMP	ABORT	;RST 7:		Programm Abort
+	JMP	TRAP		;RST 4.5:	Nicht maskierbarer Interrupt (Taster)
 	DB	0FFH
-	JMP	RST75	;RST 7.5: 	Anwender-Interrupt
+	JMP	RST55		;RST 5.5: 	Anwender-Interrupt
+	DB	0FFH
+	JMP	RST55		;RST 6: 	Anwender-Restart
+	DB	0FFH
+	JMP	RST55		;RST 6.5: 	Anwender-Interrupt
+	DB	0FFH
+	JMP	ABORT		;RST 7:		Programm Abort
+	DB	0FFH
+	JMP	RST75		;RST 7.5: 	Anwender-Interrupt
 	DB	0FFH
 
+;************************************************************
 ;	Jump-Tabelle (zu System-E/A-Unterprogrammen)
-
+;************************************************************
 	JMP	CMD
-	JMP	RCHAR	;1 Zeichen lesen
+	JMP	RCHAR		;1 Zeichen lesen
 
-	JMP	LEER	;Reserve
-	JMP	LEER	;Reserve
-	JMP	LEER	;Reserve
-	JMP	LEER	;Reserve
+	JMP	LEER		;Reserve
+	JMP	LEER		;Reserve
+	JMP	LEER		;Reserve
+	JMP	LEER		;Reserve
 
-	JMP	WCHAR	;1 Zeichen ausgeben
-	JMP	WCHARI	;1 Zeichen nach CALL ausgeben
-	JMP	WAHEX	;2 Hex-Stellen Ascii ausgeben (A)
-	JMP	WHLHEX	;4 Hex-Stellen Ascii ausgeben (HL)
-	JMP	WABIN	;8 Bin-Werte Ascii ausgeben (A)
-	JMP	WADEZ	;3 Dez-Stellen Ascii ausgeben (A)
-	JMP	WAFOR	;Ascii/Bin/Dez/Hex-Stellen Ascii ausgeben (A)
-	JMP	WBLANK	;Space ausgeben
-	JMP	WBUF	;Text ausgeben
-	JMP	WBUFI	;Text nach CALL ausgeben
-	JMP	WCRLF	;CRLF ausgeben
-	JMP	WCRLFI	;CRLF und Text nach CALL ausgeben
-	JMP	LEER	;Reserve
-	JMP	LEER	;Reserve
-	JMP	LEER	;Reserve
+	JMP	WCHAR		;1 Zeichen ausgeben
+	JMP	WCHARI		;1 Zeichen nach CALL ausgeben
+	JMP	WAHEX		;2 Hex-Stellen Ascii ausgeben (A)
+	JMP	WHLHEX		;4 Hex-Stellen Ascii ausgeben (HL)
+	JMP	WABIN		;8 Bin-Werte Ascii ausgeben (A)
+	JMP	WADEZ		;3 Dez-Stellen Ascii ausgeben (A)
+	JMP	WAFOR		;Ascii/Bin/Dez/Hex-Stellen Ascii ausgeben (A)
+	JMP	WBLANK		;Space ausgeben
+	JMP	WBUF		;Text ausgeben
+	JMP	WBUFI		;Text nach CALL ausgeben
+	JMP	WCRLF		;CRLF ausgeben
+	JMP	WCRLFI		;CRLF und Text nach CALL ausgeben
+	JMP	LEER		;Reserve
+	JMP	LEER		;Reserve
+	JMP	LEER		;Reserve
 
 ;	Copyright Notice
 	DB	'(C) COPYRIGHT 1982 BFZ/MFA, ESSEN, W.GERMANY
 
-
+;************************************************************
 ;	Kommando-Tabelle
-
+;************************************************************
 CMDTAB:	DB	'ASSEMBLER',0
 	DW	ASSEMBLER	;Inkremental-Assembler
 
@@ -140,9 +145,9 @@ CMDTAB:	DB	'ASSEMBLER',0
 
 	DB	0		;Ende Kommando-Tabelle
 
-
+;************************************************************
 ;	System Boot
-
+;************************************************************
 RESET:	LXI	SP,MONSTK	;Stack initialisieren
 	CALL	BPTREM
 	CALL	CASINIT		;Cassetten I/O initialisieren
@@ -175,9 +180,9 @@ RESET2:	MVI	M,0
 	DB	'BFZ-MONITOR VERSION 1.8',LF,0
 	CALL	HELP
 
-
+;************************************************************
 ;	Kommando-Dekodierer
-
+;************************************************************
 CMD:	LXI	SP,MONSTK	;Stack initialisieren
 	CALL	TRINIT		;Trace initialisieren
 	CALL	LCLR		;Zeilenzaehler ausschalten
@@ -504,7 +509,7 @@ I2:	PUSH	B
 	MVI	C,FHEX		;Hex Format
 	CALL	BREAD
 	POP	B
-	CPI	' '		;Schlusszeichen ist Space?
+	CPI	SPACE		;Schlusszeichen ist Space?
 	JZ	I2		; ja, wiederholen
 	JNC	I1		; nein, + oder -: neue PortAdr holen
 	ORA	A		;CR: Exit mit CY=0
@@ -528,7 +533,7 @@ LOAD:
 	CALL	WCRLFI
 	DB	' SPACE, DANN BAND EINSCHALTEN',0
 LSPACE:	CALL	RCHAR		;Auf Space warten
-	CPI	' '
+	CPI	SPACE
 	JNZ	LSPACE
 	CALL	WCRLF
 	MOV	A,H
@@ -689,7 +694,7 @@ O2:	CALL	HDATAD		;Daten holen
 	MVI	C,0D3H		;OUT-Befehlt
 	CALL	EXPORT
 	POP	PSW
-	CPI 	' '		;Space ?
+	CPI 	SPACE		;Space ?
 	JZ	O2		; ja, neue Daten
 	JNC	O1		; nein, + oder -, neue Port-Adr
 	ORA	A		; nein, CR, Fertig
