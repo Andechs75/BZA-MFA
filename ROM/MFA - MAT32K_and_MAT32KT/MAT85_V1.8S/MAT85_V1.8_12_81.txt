@@ -18,7 +18,7 @@ LEER	EQU	0FFFFH		;"LEER" z.B. als Sprungadresse
 BEL	EQU	07H		;Klingel	(BELL)
 BS	EQU	08H		;Rueckschritt	(BACKSPACE)
 LF	EQU	0AH		;Zeilenvorschub	(LINE FEED)
-CR	EQU	0DH		;Wagentücklauf	(CARRIAGE RETURN)
+CR	EQU	0DH		;Wagenruecklauf	(CARRIAGE RETURN)
 ESC	EQU	1BH		;Abbruch	(ESCAPE)
 SPACE	EQU	20H		;Leerzeichen	(SPACE)
 RUBOUT	EQU	7FH		;Loeschen	(RUB OUT/DELETE)
@@ -547,7 +547,7 @@ L1:	CALL	RCAS		;RECORD Mark suchen
 	JNZ	L1		; nein, weiter suchen
 	MVI	B,0		; ja, CHECKSUM=0 Anfangs
 	CALL	RCASAHEX	;Anzahl Bytes lesen
-	JZ	L3		;Launge=0: ENDE-RECORD
+	JZ	L3		;Laenge=0: ENDE-RECORD
 	MOV	C,A		;Anzahl Datenbytes
 	CALL	RCASAHEX	;LadeAdr Lesen (2 Bytes)
 	MOV	D,A

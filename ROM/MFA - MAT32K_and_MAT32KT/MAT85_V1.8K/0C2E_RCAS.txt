@@ -1,0 +1,51 @@
+CMD     EQU    001AC    ;
+WAHEX   EQU    00B6F	;
+WCRLFI  EQU    00C13	;CRLF+Text nach CALL ausgeben 
+ZUHEX   EQU    01084	;
+CASIN   EQU    0FC86	;
+
+;************************************************************
+;* RCAS		Ein Zeichen von Cassette lesen
+;************************************************************
+        ORG     0EC2E
+;       ORG     00C2E
+RCAS:   CALL    CASIN
+        ANI     7F
+        RET
+
+;************************************************************
+;* RCASHEX	Zeichen Hexadezimal von Cassette lesen 
+;************************************************************
+RCASAH: PUSH    D
+        CALL    RCAS
+        MOV     D,A
+        CALL    ZUHEX
+        JC      RCASA1
+        RLC
+        RLC
+        RLC
+        RLC
+        MOV     E,A
+        CALL    RCAS
+        MOV     D,A
+        CALL    ZUHEX
+        JC      RCASA1
+        ORA     E
+        MOV     E,A
+        ADD     B
+        MOV     B,A
+        MOV     A,E
+        POP     D
+        STC
+        RNZ
+        CMC
+        RET
+RCASA1: MOV     A,D
+        POP     D
+        CALL    WCRLFI
+        DB      ' *** NICHT HEX = ',0
+        CALL    WAHEX
+        STC
+        JMP     CMD
+
+	LP
