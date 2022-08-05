@@ -31,6 +31,7 @@ Arduino Micro VT100 Interface for the MFA and a Terminal program.
 - Remove the +/-12V driver and receiver. That's the MC1488/89.
 - Connect the TTL Rx, Tx, 5V and GND to the Micro D1/Tx, D0/RX, VIN and GND.
 - modify the ROM: MAT32kT for Serial Card, MAT32kS for Serial on CPU:
+  ![Editor](https://github.com/Andechs75/BZA-MFA/blob/main/Terminal/Rom.png)
   The Editor uses a Key-Table. So we only modify this as it was intended to be modified. 
 - Burn the Arduino (TTL, if you remember...)
 
@@ -38,7 +39,7 @@ Arduino Micro VT100 Interface for the MFA and a Terminal program.
 
 
 ## Documents
-  Collection of documents of the MZA-MFA
+  Collection of documents of the BZA-MFA
 
 ## Attributions
 - [www.oldcomputers-ddns.org](https://oldcomputers-ddns.org/public/pub/rechner/mfa_mikrocomputer_fuer_ausbildung/index.html), origin of the documents-folder.
