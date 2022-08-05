@@ -1,0 +1,120 @@
+0000
+0000             HSTART   EQU    0A6D            ;STARTADR ABFRAGEN
+0000             RCHAR    EQU    0AE0            ;EIN ZEICHEN LESEN
+0000             WCRLF    EQU    0C01            ;CRLF AUSGEBEN
+0000             WCRLFI   EQU    0C13            ;CRLF+TEXT NACH CALL AUSGEBEN
+0000             RCASAHEX EQU    0C34            ;8BIT WERT VON BAND LESEN
+0000                                             ; MIT CHECKSUM
+0000             RCAS     EQU    0C2E            ;ZEICHEN VON BAND LESEN
+0000             LBADR    EQU    0FCBE           ;ABLAGE FUER LADEADR
+0000             SPACE    EQU    20              ;CHAR' '
+0000             MARK     EQU    3A              ;CHAR':'
+0000
+0000             ;************************************************************
+0000             ;* LOAD PROGRAMM ODER DATEN VON CASSETTE LADEN
+0000             ;* KMD > 'L'OAD         L-CR ODER L-SPACE TIPPEN,
+0000             ;*                      RESTTEXT WIRD ERGAENZT
+0000             ;* 'START-ADR =' YYYY   NEU: YYYY-CR ODER YYYY-SPACE MIT
+0000             ;*                           YYYY NICHT 0
+0000             ;*                      YYYY=0: STARTADR VON CASSETTE
+0000             ;* 'SPACE, DANN BAND EINSCHALTEN' SPACE DRUECKEN, UND LOS
+0000             ;* 'ZZZZZ'              ZZZZZ=READY: FEHLERFREI EINGELESEN
+0000             ;* 'ZZZZZ'              ZZZZZ=ERROR: FEHLER BEIM EINLESEN
+0000             ;*                                   CHECKSUM ODER TIME-OUT
+0000             ;************************************************************
+0000                     ORG     0E3F4
+E3F4             ;       ORG     003F4
+E3F4 21 0000     LOAD:   LXI     H,0
+E3F7 CD 6D0A             CALL    HSTART          ;LADEADR HOLEN
+E3FA CD 130C             CALL    WCRLFI
+E3FD 20535041            DB      ' SPACE, DANN BAND EINSCHALTEN',0
+E401 43452C20
+E405 44414E4E
+E409 2042414E
+E40D 44204549
+E411 4E534348
+E415 414C5445
+E419 4E00
+E41B CD E00A             CALL    RCHAR           ;AUF SPACE WARTEN
+E41E FE 20       LSPACE: CPI     SPACE
+E420 C2 1EE4             JNZ     LSPACE
+E423 CD 010C             CALL    WCRLF
+E426 7C                  MOV     A,H
+E427 B5                  ORA     L               ;LADEADR=0?
+E428 F5                  PUSH    PSW             ;(FLAGS RETTEN)
+E429 7C                  MOV     A,H
+E42A B5                  ORA     L               ;LADEADR=0?
+E42B F5                  PUSH    PSW             ;(FLAGS RETTEN)
+E42C CA 32E4             JZ      L1              ; JA, LADEADR VON BAND LESEN
+E42F 22 BEFC             SHLD    LBADR           ; NEIN, LADEADR ABSPEICHERN
+E432 CD 2E0C     L1:     CALL    RCAS            ;RECORD-MARK SUCHEN
+E435 DA 79E4             JC      L5              ;TIME-OUT
+E438 FE 3A               CPI     MARK            ;RECORD-MARK ?
+E43A C2 32E4             JNZ     L1              ; NEIN, WEITER SUCHEN
+E43D 06 00               MVI     B,0             ; JA, CHECKSUM=0 SETZEN
+E43F CD 340C             CALL    RCASAHEX        ;ANZAHL BYTES LESEN
+E442 CA 6DE4             JZ      L3              ;LAENGE=0: END-RECORD
+E445 4F                  MOV     C,A             ;ANZAHL DATENBYTES
+E446 CD 340C             CALL    RCASAHEX        ;LADEADR LESEN (2BYTES)
+E449 57                  MOV     D,A
+E44A CD 340C             CALL    RCASAHEX
+E44D 5F                  MOV     E,A             ;(DE)=LADEADR
+E44E F1                  POP     PSW             ;LADEADR VON BAND ?
+E44F F5                  PUSH    PSW
+E450 C2 54E4             JNZ     L11             ; NEIN
+E453 EB                  XCHG                    ; JA
+E454 CD 340C     L11:    CALL    RCASAHEX        ; RECORD-TYP EINLESEN
+E457 B7                  ORA     A
+E458 C2 79E4             JNZ     L5              ;NZ: TYP UNGLEICH 0
+E45B CD 340C     L2:     CALL    RCASAHEX        ;DATENBYTES EINLESEN
+E45E 77                  MOV     M,A             ; UND AB LADEADR SPEICHERN
+E45F 23                  INX     H               ; SOLANGE, BIS
+E460 0D                  DCR     C               ; ALLE DATEN IM RECORD ERFASST
+E461 C2 5BE4             JNZ     L2
+E464 CD 340C             CALL    RCASAHEX        ;CHECKSUM EINLESEN
+E467 D2 32E4             JNC     L1              ;NZ: CHECKSUM IO, NAECHSTER
+E46A C3 79E4             JMP     L5              ;    CHECKSUM NIO
+E46D
+E46D 0E 04       L3:     MVI     C,04            ;RECORD-END, OHNE WEITERE
+E46F CD 340C     L4:     CALL    RCASAHEX        ; KONTROLLE EINLESEN
+E472 0D                  DCR     C               ; (BIS AUF CHECKSUM)
+E473 C2 6FE4             JNZ     L4
+E476 D2 8FE4             JNC     L6              ;NC: CHECKSUM IO
+E479 CD 130C     L5:     CALL    WCRLFI          ;FEHLERMELDUNG
+E47C 20434845            DB      ' CHECKSUM ERROR',0
+E480 434B5355
+E484 4D204552
+E488 524F5200
+E48C F1                  POP     PSW
+E48D 37                  STC
+E48E C9                  RET
+E48F
+E48F CD 130C     L6:     CALL    WCRLFI          ;FERTIGMELDUNG
+E492 20524541            DB      ' READY',0
+E496 445900
+E499 F1                  POP     PSW
+E49A B7                  ORA     A
+E49B C9                  RET
+E49C
+E49C                     LP
+HSTART 0A6D
+L1     E432
+L11    E454
+L2     E45B
+L3     E46D
+L4     E46F
+L5     E479
+L6     E48F
+LBADR  FCBE
+LOAD   E3F4
+LSPACE E41E
+MARK   003A
+RCAS   0C2E
+RCASAH 0C34
+RCHAR  0AE0
+SPACE  0020
+WCRLF  0C01
+WCRLFI 0C13
+E49C
+
+--- ASSEMBLIEREN OK

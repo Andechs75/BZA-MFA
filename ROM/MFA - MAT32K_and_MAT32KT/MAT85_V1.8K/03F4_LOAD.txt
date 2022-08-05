@@ -1,0 +1,87 @@
+HSTART   EQU    0A6D            ;StartAdr abfragen
+RCHAR    EQU    0AE0            ;Ein Zeichen lesen
+WCRLF    EQU    0C01            ;CRLF ausgeben
+WCRLFI   EQU    0C13            ;CRLF+Text nach CALL ausgeben 
+RCASAHEX EQU    0C34            ;8Bit Wert von Band lesen
+                                ; mit CHECKSUM
+RCAS     EQU    0C2E            ;Zeichen von Band lesen
+LBADR    EQU    0FCBE           ;Ablage fuer LadeAdr
+SPACE    EQU    20              ;Char' '
+MARK     EQU    3A              ;Char':'
+
+;************************************************************
+;* LOAD Programm oder Daten von Cassette laden
+;* KMD > 'L'OAD         L-CR oder L-Space Tippen,
+;*                      Resttext wird ergaenzt
+;* 'START-ADR =' YYYY   Neu: YYYY-CR oder YYYY-Space mit
+;*                           YYYY nicht 0
+;*                      YYYY=0: StartAdr von Cassette
+;* 'SPACE, DANN BAND EINSCHALTEN' Space druecken, und los
+;* 'ZZZZZ'              ZZZZZ=READY: Fehlerfrei eingelesen
+;* 'ZZZZZ'              ZZZZZ=ERROR: Fehler beim Einlesen
+;*                                   Checksum oder Time-out
+;************************************************************
+        ORG     0E3F4
+;       ORG     003F4
+LOAD:   LXI     H,0
+        CALL    HSTART          ;LadeAdr holen
+        CALL    WCRLFI
+        DB      ' SPACE, DANN BAND EINSCHALTEN',0
+        CALL    RCHAR           ;Auf Space warten
+LSPACE: CPI     SPACE
+        JNZ     LSPACE
+        CALL    WCRLF
+        MOV     A,H
+        ORA     L               ;LadeAdr=0?
+        PUSH    PSW             ;(Flags retten)
+        MOV     A,H
+        ORA     L               ;LadeAdr=0?
+        PUSH    PSW             ;(Flags retten)
+        JZ      L1              ; ja, LadeAdr von Band lesen
+        SHLD    LBADR           ; nein, LadeAdr abspeichern
+L1:     CALL    RCAS            ;RECORD-MARK suchen
+        JC      L5              ;Time-out
+        CPI     MARK            ;RECORD-MARK ?
+        JNZ     L1              ; nein, weiter suchen
+        MVI     B,0             ; ja, CHECKSUM=0 setzen
+        CALL    RCASAHEX        ;Anzahl Bytes lesen
+        JZ      L3              ;Laenge=0: END-RECORD
+        MOV     C,A             ;Anzahl Datenbytes
+        CALL    RCASAHEX        ;LadeAdr lesen (2Bytes)
+        MOV     D,A
+        CALL    RCASAHEX
+        MOV     E,A             ;(DE)=LadeAdr
+        POP     PSW             ;LadeAdr von Band ?
+        PUSH    PSW
+        JNZ     L11             ; nein
+        XCHG                    ; ja
+L11:    CALL    RCASAHEX        ; RECORD-TYP einlesen
+        ORA     A
+        JNZ     L5              ;NZ: Typ ungleich 0
+L2:     CALL    RCASAHEX        ;Datenbytes einlesen
+        MOV     M,A             ; und ab LadeAdr speichern
+        INX     H               ; solange, bis
+        DCR     C               ; alle Daten im RECORD erfasst
+        JNZ     L2
+        CALL    RCASAHEX        ;CHECKSUM einlesen
+        JNC     L1              ;NZ: CHECKSUM iO, naechster
+        JMP     L5              ;    CHECKSUM niO
+
+L3:     MVI     C,04            ;RECORD-END, ohne weitere
+L4:     CALL    RCASAHEX        ; Kontrolle einlesen
+        DCR     C               ; (bis auf CHECKSUM)
+        JNZ     L4
+        JNC     L6              ;NC: CHECKSUM iO
+L5:     CALL    WCRLFI          ;Fehlermeldung
+        DB      ' CHECKSUM ERROR',0
+        POP     PSW
+        STC
+        RET
+
+L6:     CALL    WCRLFI          ;Fertigmeldung
+        DB      ' READY',0
+        POP     PSW
+        ORA     A
+        RET
+
+        LP
