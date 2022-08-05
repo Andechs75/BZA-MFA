@@ -1,0 +1,73 @@
+;Default Parameter
+SBADR   EQU     0FCC0   ;'S'-StartAdr
+SEADR   EQU     0FCC2   ;'S'-StopAdr
+;Hilfsroutinen
+HSTARD  EQU     00A74   ;Hole StartAdr +default
+HSTOPD  EQU     00A9C   ;Hole StopAdr +default
+WCRLF   EQU     00C01   ;Write CR+LF
+WCRLFI  EQU     00C13   ;Write CR+LF+WBUFI
+RCHAR   EQU     00AE0   ;Read char
+SUB2    EQU     01039   ;HL= HL-DE
+;Cassette
+WCASAHEX  EQU   00C7C   ;Cassette Write Chars Hex
+WCASBUFI  EQU   00C91   ;Cassette Write indexed
+WCASHLHEX EQU   00C9F   ;Cassette Write (HL)
+;define
+CR      EQU     0D
+LF      EQU     0A
+;*******************************************
+        ORG     0E67F
+;       ORG     0067F
+        LHLD    SBADR
+        CALL    HSTARD
+        SHLD    SBADR
+        XCHG
+        LHLD    SEADR
+        CALL    HSTOPD
+        SHLD    SEADR
+        CALL    WCRLF
+        CALL    SUB2
+	RC
+	CALL	WCRLFI
+        DB      ' BAND EINSCHALTEN, DANN SPACE',0
+SSPACE: CALL    RCHAR
+        CPI     ' '
+        JNZ     SSPACE
+        CALL    WCRLF
+        XCHG
+        INX     D
+        CALL    WCASBUFI
+        DB      LF,CR,0
+        MOV     A,E
+        ANI     0F
+        JNZ     S11
+S1:     MVI     A,10
+S11:    CALL    WCASBUFI
+        DB      ':',0
+        CALL    WCASAHEX
+        MOV     C,A
+        CALL    WCASHLHEX
+        ADD     L
+        ADD     H
+        MOV     B,A
+        XRA     A
+        CALL    WCASAHEX
+S2:     MOV     A,M
+        CALL    WCASAHEX
+        ADD     B
+        MOV     B,A
+        INX     H
+        DCX     D
+        DCR     C
+        JNZ     S2
+        XRA     A
+        SUB     B
+        CALL    WCASAHEX
+        CALL    WCASBUFI
+        DB      CR,LF,0
+        MOV     A,D
+        ORA     E
+        JNZ     S1
+        CALL    WCASBUFI
+        DB      ':','00','0000','01,'FF',LF,CR,0
+        RET

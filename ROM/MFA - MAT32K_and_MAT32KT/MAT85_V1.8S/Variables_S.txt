@@ -32,9 +32,9 @@ UARTST	  EQU	0FF	;UART Steuerregister
 UARTTD	  EQU	0FE	;UART Datenregister
 CASI	  EQU	007EF	;Cassette In A
 CASINIT	  EQU	007F9	;Cassette Init I/O
-CASO	  EQU	007EF	;Cassette Out A
+CASO	  EQU	00821	;Cassette Out A
 ;Serial
-SERI	  EQU	0085D	;Ser In A
+SERI	  EQU	0082D	;Ser In A
 SERINIT	  EQU	00860	;Ser Init I/O
 SERO	  EQU	0089F	;Ser Out A
 

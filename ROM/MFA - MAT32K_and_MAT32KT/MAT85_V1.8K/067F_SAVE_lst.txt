@@ -1,0 +1,85 @@
+0000
+0000             ;DEFAULT PARAMETER
+0000             SBADR   EQU     0FCC0   ;'S'-STARTADR
+0000             SEADR   EQU     0FCC2   ;'S'-STOPADR
+0000             ;HILFSROUTINEN
+0000             HSTARD  EQU     00A74   ;HOLE STARTADR +DEFAULT
+0000             HSTOPD  EQU     00A9C   ;HOLE STOPADR +DEFAULT
+0000             WCRLF   EQU     00C01   ;WRITE CR+LF
+0000             WCRLFI  EQU     00C13   ;WRITE CR+LF+WBUFI
+0000             RCHAR   EQU     00AE0   ;READ CHAR
+0000             SUB2    EQU     01039   ;HL= HL-DE
+0000             ;CASSETTE
+0000             WCASAHEX  EQU   00C7C   ;CASSETTE WRITE CHARS HEX
+0000             WCASBUFI  EQU   00C91   ;CASSETTE WRITE INDEXED
+0000             WCASHLHEX EQU   00C9F   ;CASSETTE WRITE (HL)
+0000             ;DEFINE
+0000             CR      EQU     0D
+0000             LF      EQU     0A
+0000             ;*******************************************
+0000                     ORG     0E67F
+E67F             ;       ORG     0067F
+E67F 2A C0FC             LHLD    SBADR
+E682 CD 740A             CALL    HSTARD
+E685 22 C0FC             SHLD    SBADR
+E688 EB                  XCHG
+E689 2A C2FC             LHLD    SEADR
+E68C CD 9C0A             CALL    HSTOPD
+E68F 22 C2FC             SHLD    SEADR
+E692 CD 010C             CALL    WCRLF
+E695 CD 3910             CALL    SUB2
+E698 D8                  RC
+E699 CD 130C             CALL    WCRLFI
+E69C 2042414E            DB      ' BAND EINSCHALTEN, DANN SPACE',0
+E6A0 44204549
+E6A4 4E534348
+E6A8 414C5445
+E6AC 4E2C2044
+E6B0 414E4E20
+E6B4 53504143
+E6B8 4500
+E6BA CD E00A     SSPACE: CALL    RCHAR
+E6BD FE 20               CPI     ' '
+E6BF C2 BAE6             JNZ     SSPACE
+E6C2 CD 010C             CALL    WCRLF
+E6C5 EB                  XCHG
+E6C6 13                  INX     D
+E6C7 CD 910C             CALL    WCASBUFI
+E6CA 0A0D00              DB      LF,CR,0
+E6CD 7B                  MOV     A,E
+E6CE E6 0F               ANI     0F
+E6D0 C2 D5E6             JNZ     S11
+E6D3 3E 10       S1:     MVI     A,10
+E6D5 CD 910C     S11:    CALL    WCASBUFI
+E6D8 3A00                DB      ':',0
+E6DA CD 7C0C             CALL    WCASAHEX
+E6DD 4F                  MOV     C,A
+E6DE CD 9F0C             CALL    WCASHLHEX
+E6E1 85                  ADD     L
+E6E2 84                  ADD     H
+E6E3 47                  MOV     B,A
+E6E4 AF                  XRA     A
+E6E5 CD 7C0C             CALL    WCASAHEX
+E6E8 7E          S2:     MOV     A,M
+E6E9 CD 7C0C             CALL    WCASAHEX
+E6EC 80                  ADD     B
+E6EF 1B                  DCX     D
+E6F0 0D                  DCR     C
+E6F1 C2 E8E6             JNZ     S2
+E6F4 AF                  XRA     A
+E6F5 90                  SUB     B
+E6F6 CD 7C0C             CALL    WCASAHEX
+E6F9 CD 910C             CALL    WCASBUFI
+E6FC 0D0A00              DB      CR,LF,0
+E6FF 7A                  MOV     A,D
+E700 B3                  ORA     E
+E701 C2 D3E6             JNZ     S1
+E704 CD 910C             CALL    WCASBUFI
+E707 3A303030            DB      ':','00','0000','01','FF',LF,CR,0
+E70B 30303030
+E70F 3146460A
+E713 0D00
+E715 C9                  RET
+E716
+
+--- ASSEMBLIEREN OK
