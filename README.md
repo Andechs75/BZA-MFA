@@ -39,9 +39,9 @@ Arduino Micro VT100 Interface for the MFA and a Terminal program.
 
 
 ## Documents
-  Collection of BZA-MFA documents
-  ROM-Files
-  Some Datasheets you always need for reairs
+- Collection of BZA-MFA documents
+- ROM-Files
+- Some Datasheets you always need for reairs
 
 ## Attributions
 - [www.oldcomputers-ddns.org](https://oldcomputers-ddns.org/public/pub/rechner/mfa_mikrocomputer_fuer_ausbildung/index.html), origin of the documents-folder.
