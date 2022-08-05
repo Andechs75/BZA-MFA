@@ -16,8 +16,8 @@ Arduino Micro VT100 Interface for the MFA and a Terminal program.
 - Copy-Paste programs between MFA and PC
 
 ### Terminal: Preview
-![KMD](https://github.com/Andechs75/BZA-MFA/blob/main/Terminal/KMD.png)
-![Editor](https://github.com/Andechs75/BZA-MFA/blob/main/Terminal/Editor.png)
+![KMD](https://github.com/Andechs75/BZA-MFA/blob/main/Terminal/Pictures/KMD.png)
+![Editor](https://github.com/Andechs75/BZA-MFA/blob/main/Terminal/Pictures/Editor.png)
 
 ### Terminal: Application requirements
 - MFA CPU, RAM, ROM, (Serial Card)
@@ -30,8 +30,9 @@ Arduino Micro VT100 Interface for the MFA and a Terminal program.
 - Remove the Video and Keybord Card.
 - Remove the +/-12V driver and receiver. That's the MC1488/89.
 - Connect the TTL Rx, Tx, 5V and GND to the Micro D1/Tx, D0/RX, VIN and GND.
+  ![Editor](https://github.com/Andechs75/BZA-MFA/blob/main/Terminal/Pictures/Aufbau.png)
 - modify the ROM: MAT32kT for Serial Card, MAT32kS for Serial on CPU:
-  ![Editor](https://github.com/Andechs75/BZA-MFA/blob/main/Terminal/Rom.png)
+  ![Editor](https://github.com/Andechs75/BZA-MFA/blob/main/Terminal/Pictures/Rom.png)
   The Editor uses a Key-Table. So we only modify this as it was intended to be modified. 
 - Burn the Arduino (TTL, if you remember...)
 
