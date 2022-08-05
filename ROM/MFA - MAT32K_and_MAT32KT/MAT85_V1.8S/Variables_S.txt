@@ -1,0 +1,199 @@
+;*Monitor****************************************************
+BFZ		EQU	00000
+LBANF		EQU	00004	;Sprungtabelle für Routinen
+CMDTAB		EQU	000B6
+RESET		EQU	00149
+CMD     	EQU    	001A9
+CMDABORT 	EQU	00225
+CMDUSER 	EQU	0023F
+ABORT		EQU	0024D
+TASTERRESET 	EQU 	00265
+TRAP		EQU	00286
+
+;*Programme**************************************************
+ASSEMBLER	EQU	002A2
+BREAKPOINT	EQU	002CB
+DISASSEMBLER	EQU	0034A
+GO		EQU	00374
+HELP		EQU	003B5
+INPORT		EQU	003D1
+LOAD		EQU	003F4
+MEMORI		EQU	00499
+NEXTINSTRUCTION	EQU	00501
+OUTPORT		EQU	00515
+PRINT		EQU	00541
+REGISTER	EQU	00584
+SAVE		EQU	0067F
+TRACE		EQU	00716
+
+;*Treiber****************************************************
+; Cassette
+UARTST	  EQU	0FF	;UART Steuerregister
+UARTTD	  EQU	0FE	;UART Datenregister
+CASI	  EQU	007EF	;Cassette In A
+CASINIT	  EQU	007F9	;Cassette Init I/O
+CASO	  EQU	007EF	;Cassette Out A
+;Serial
+SERI	  EQU	0085D	;Ser In A
+SERINIT	  EQU	00860	;Ser Init I/O
+SERO	  EQU	0089F	;Ser Out A
+
+;*Hilfsroutinen**********************************************
+;Zeilenzaehler
+LCLR	EQU 	008C6	;Zeilenzaehler abschalten
+LINIT	EQU	008CD	;Zeilenzaeler init
+LTST	EQU	008D5	;Zeilenzaehler testen
+;Eingabe
+HARD	EQU	008DF	;Hole Adresse
+HBPT	EQU	00908	;Hole Breakpoints
+HDATA	EQU	00941	;Hole 8Bit Datenbyte
+HDATAD	EQU	0096E	;Hole Datenbyte +default
+HEINAUS	EQU	0097B	;Hole Ein/Aus
+HFORMD	EQU	009C5	;Hole Zahlenformat +default
+HJANEIN	EQU	00A0C	;Hole Ja/Nein
+HPORTD	EQU	00A2C	;Hole Ein-/Ausgabeport +default
+HSTART	EQU	00A6B	;Hole StartAdr
+HSTARD	EQU	00A74	;Hole StartAdr +default
+HSTEPD	EQU	00A7B	;Hole Anz.Einzelinstruktionen
+HSTOPD	EQU	00A9C	;Hole StopAdr +default
+PDATA	EQU	00AAC	;Print Daten +altwert
+PSTART	EQU	00AB4	;Print StartAdr
+PSTARD	EQU	00AC5	;Print StartAdr +default
+PSTOPD	EQU	00ACC	;Print StopAdr +default
+RCHAR	EQU	00AE0	;Read char
+;Ausgabe
+WAASC	EQU	00AEE	;Write A Ascii
+WABIN	EQU	00B03	;Write A Bin
+WADEZ	EQU	00B19	;Write A Dez
+WAFOR	EQU	00B4F	;Write A FORMAT
+WAFORB	EQU	00B68	;Write A FORMAT+WBLANK
+WAHEX	EQU	00B6F	;Write A Hex
+WAHEXB	EQU	00B82	;Write A Hex+WBLANK
+WBELL	EQU	00B89	;Write Bell
+WBLANK	EQU	00B8E	;Write Space
+WBLNKI	EQU	00B93	;Write (HL)x Space
+WBUF	EQU	00BA1	;Write Buffer (HL)
+WBUFI	EQU	00BB0	;Write Buffer indexed
+WCHAR	EQU	00BB6	;Write 1Char
+WCHARI	EQU	00BF7	;Write 1Char indexed
+WCRLF	EQU	00C01	;Write CR+LF
+WCRLFI	EQU	00C13	;Write CR+LF+WBUFI
+WHLHEX	EQU	00C1C	;Write HL Hex
+WHLHXB	EQU	00C27	;Write HL Hex +WBLANK
+; Cassette
+RCAS	  EQU	00C2E	;Cassette Read Char A
+RCASAHEX  EQU	00C34	;Cassette Read Chars Hex
+WCAS	  EQU	00C76	;Cassette Write A
+WCASAHEX  EQU	00C7C	;Cassette Write Chars Hex
+WCASBUFI  EQU	00C91	;Cassette Write indexed
+WCASHLHEX EQU	00C9F	;Cassette Write (HL)
+;Buffer
+BCLR	EQU	00CAA	;Buffer Clear
+BGET	EQU	00CC0	;Buffer Get 
+BGETF	EQU	00CCD	;Buffer Get First
+BGETL	EQU	00CDB	;Buffer Get Last
+BPUT	EQU	00CE9	;Buffer Put
+BREAD	EQU	00D0A	;Buffer Read and BPUT
+;Breakpoints
+BPTINS	EQU	00DC5	;Breakpoint Insert
+BPTNUM	EQU	00E09	;Breakpoint Numbers
+BPTREM	EQU	00E0B	;Breakpoint Remove
+BPTSET	EQU	00E37	;Breakpoint Set
+;Call
+CALLHL	EQU	00E74	;CALL (HL)
+CALLTB	EQU	00E75	;CALL (Tabel)
+;Compare
+CMP2	EQU	00EA8	;Compare DE HL
+CMPL	EQU	00EB0	;Compare List (H)
+CMPLI	EQU	00ECC	;Compare List indexed
+;Print Register
+PREGF	EQU	00EFB	;Print Register Headline
+PREGP	EQU	00F0A	;Print Register Position
+PREGS	EQU	00F12	;Print Register Status
+PREGT	EQU	00FAE	;Print Register Titel
+;Register
+REGRES	EQU	00FF2	;Register Restore
+REGSAV	EQU	01016	;Register Save
+;Umwandlung
+CHTST	EQU	00E84	;Char Test
+GROSS	EQU	00EE9	;Grossbuchstabe A
+HEXASC	EQU	00EF2	;Hex to Ascii
+ZUASC	EQU	01040	;ASC A
+ZUBIN	EQU	01045	;Bin A
+ZUBIN8	EQU	0104C	;Bin A 8Chars
+ZUDEZ	EQU	01057	;Dez A
+ZUDEZ3	EQU	0105E	;Dez A 3Chars
+ZUFOR	EQU	01071	;FORMAT A
+ZUHEX	EQU	01084	;Hex A
+ZUHEX2	EQU	01096	;Hex A 2Chars
+;Sonstiges
+CRTTST	EQU	00ED2	;CRT Test
+DISLINE	EQU	00EDD	;Disassemble Line
+SUB2	EQU	01039	;HL= HL-DE
+
+;*RAM Reservierungen*****************************************
+RAM	EQU	0FC00	;Basisadr RAM-Hilfsspeicher
+USRSTK	EQU	0FC32	;User-Stack StartAdr+1
+MONSTK	EQU	0FC80	;Monitor-Stack StartAdr+1
+;EinsprungAdr in I/O-Treiber-Routinen
+SERIN	EQU	0FC80	;Serieller Input
+SEROUT	EQU	0FC83	;Serieller Output
+CASIN	EQU	0FC86	;Cassetten Input
+CASOUT	EQU	0FC89	;Cassetten Output
+; Interrupt-Vektor im RAM
+RST2	EQU	0FC8C
+RST3	EQU	0FC8F
+RST5	EQU	0FC92
+RST55	EQU	0FC95
+RST6	EQU	0FC98
+RST65	EQU	0FC9B
+RST75	EQU	0FC9E
+
+;************************************************************
+BRAM	EQU	0FCA1	;Beginn RAM init via RESET 
+; Default-Werte
+FORMAT	EQU	0FCA1	;Zahlenformat (Asc,Bin,Dez,Hex)
+BPTADR	EQU	0FCA2	;BreakpointAdr und Opcode
+			;(Adr,OP,Adr,OP..)
+; Default Parameter
+MBADR	EQU	0FCAE	;'M'-StartAdr
+PBADR	EQU	0FCBO	;'P'-StartAdr
+PEADR	EQU	0FCB2	;'M'-StopAdr
+ABADR	EQU	0FCB4	;'A'-StartAdr
+DBADR	EQU	0FCB6	;'D'-StartAdr
+DEADR	EQU	0FCB8	;'D'-StopAdr
+TBADR	EQU	0FCBA	;'T'-StartAdr
+TEADR	EQU	0FCBC	;'T'-StopAdr
+LBADR	EQU	0FCBE	;'L'-StartAdr
+SBADR	EQU	0FCC0	;'S'-StartAdr
+SEADR	EQU	0FCC2	;'S'-StopAdr
+; Flags
+TRCFLG	EQU	0FCC4	;Trace aktiv
+BPTACT	EQU	0FCC5	;Breakpoints aktiv
+BPTFLG	EQU	0FCC6	;Breakpoints
+BCKFLG	EQU	0FCC7	;0:CR,Space 1:+,- erlaubt
+CRTFLG	EQU	0FCC8	;0:CRT 1:TTY
+GROFLG	EQU	0FCC9	;Kleinbuchstaben erlaubt
+RUBFLG	EQU	0FCCA	;kein RUBOUT bei TTY
+STEPS	EQU	0FCCB	;Anzahl Einzelschritte
+;Zwischenwerte fuer Kommandos
+LINES	EQU	0FCCC	;Zeilenzähler
+DATA	EQU	0FCCD	;PortDaten
+PORT	EQU	0FCCE	;PortAdr
+; Registerwerte zum Retten und Restaurieren
+REGW	EQU	0FCCF
+PSWERT	EQU	0FCCF	;A-PSW
+BCWERT	EQU	0FCD1	;B-C
+DEWERT	EQU	0FCD3	;D-E
+HLWERT	EQU	0FCD5	;H-L
+PCWERT	EQU	0FCD7	;Programmzaehler
+SPWERT	EQU	0FCD9	;Anwender Stackpointer
+IMWERT	EQU	0FCDB	;Interrupt Mask
+SPMON	EQU	0FCDC	;Monitor StackAdr
+ERAM	EQU	0FCDE	;RAM-EndAdr + 1
+STIME	EQU	0FCDF
+;Buffer
+BUFFER	EQU	0FCE1	;ASC Datenpuffer
+BUFEND	EQU	0FCF2
+;Labeltabelle
+LBRAM	EQU	0FD90	;RAM für Labeltabelle
