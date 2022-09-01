@@ -1,0 +1,59 @@
+Name            I2C_Busmaster;
+Partno          CA0001;
+Revision        01;
+Date            01/09/22;
+Designer        V.Fitzek;
+Company         not for commercial use;
+Location        None;
+Assembly        None;
+Device          g16v8a;
+
+/**************************************************************/
+/*                                                            */
+/*                    						*/
+/*                                                            */
+/**************************************************************/
+
+/*
+ * Inputs:  define inputs
+ */
+
+Pin 1 	=  ADR;
+Pin 2 	=  INTA;
+Pin 3 	=  IOR;
+Pin 4 	=  IOW;
+Pin 5 	=  PCF;
+Pin 6 	=  I2C;
+
+/*
+ * Outputs:  define outputs as active HI levels
+ *
+ */
+
+Pin 19 = RST;
+Pin 18 = INTR;
+Pin 17 = DIR;
+Pin 16 = CS1;
+Pin 15 = CS2;
+Pin 14 = RD;
+Pin 13 = WR;
+Pin 12 = IACK;
+
+/*
+ * Logic:
+ */
+!CS1	= (!ADR & (!IOR # !IOW)) # INTA;
+CS2 = CS1;
+
+!WR 	= !CS2 & !IOW;
+!RD 	= !CS2 & !IOR;
+!IACK 	= !CS2 & !INTA;
+
+DIR 	= (!ADR & !IOR) # INTA;
+
+RST	= !I2C;   
+INTR	= !PCF;
+
+
+
+
