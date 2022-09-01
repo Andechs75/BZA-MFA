@@ -204,3 +204,27 @@ BUFFER	EQU	0FCE1	;ASC Datenpuffer
 BUFEND	EQU	0FCF2
 ;Labeltabelle
 LBRAM	EQU	0FD90	;RAM für Labeltabelle
+
+;************************************************************
+; Interrupt-Vektor im ROM
+INT C7	0000:	JMP	RESET	;RTS 0	: Kaltstart
+INT CF	0008:	JMP	CMDUSER	;RST 1  : Anwender-Einsprung in Monitor
+INT D7	0010:	JMP	RST2	;RST 2  : Anwender Interrupt
+INT DF	0018:	JMP	RST3	;RST 3  : Anwender Interrupt
+INT E7	0020:	JMP	BREAK	;RST 4  : Breakpoint
+TRAP	0024:	JMP	TRAP	;RST 4.5: Nicht maskierbarer Interrupt (Taster)
+INT EF	0028:	JMP	RST5	;RST 5  : Anwender Interrupt
+RST 5.5	002C:	JMP	RST55	;RST 5.5: Anwender Interrupt
+INT F7	0030:	JMP	RST6	;RST 6  : Anwender Interrupt
+RST 6.5	0034:	JMP	RST65	;RST 6.5: Anwender Interrupt (COM:)
+INT FF	0038:	JMP	ABORT	;RST 7  : Program Abort
+RST 7.5	003C:	JMP	RST75	;RST 7.5: Anwender Interrupt
+
+; Interrupt-Vektor im RAM
+RST2	EQU	0FC8C
+RST3	EQU	0FC8F
+RST5	EQU	0FC92
+RST55	EQU	0FC95
+RST6	EQU	0FC98
+RST65	EQU	0FC9B
+RST75	EQU	0FC9E
