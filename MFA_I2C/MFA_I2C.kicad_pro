@@ -34,8 +34,8 @@
         "other_text_upright": false,
         "pads": {
           "drill": 3.2,
-          "height": 4.572,
-          "width": 4.572
+          "height": 5.08,
+          "width": 5.08
         },
         "silk_line_width": 0.15,
         "silk_text_italic": false,
@@ -507,8 +507,8 @@
       ""
     ],
     [
-      "095c5220-0371-4684-a931-db912d0920ec",
-      "Untitled Sheet"
+      "a14393d4-4896-4935-9beb-dbafb1074fdb",
+      " Application"
     ]
   ],
   "text_variables": {}
